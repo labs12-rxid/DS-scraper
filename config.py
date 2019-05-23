@@ -1,1 +1,2 @@
-chromedriver_address = '/usr/bin/chromedriver'
+chromedriver_path = '/usr/bin/chromedriver'
+max_output_drugs = 5
