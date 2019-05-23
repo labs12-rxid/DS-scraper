@@ -553,6 +553,15 @@ class drugscom:
         # print(f"{mprint}.html written")
         time.sleep(1.5)
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        title = soup.find('h1')
+        print('title',title)
+        # if title == None:
+        #     return self.get_data(self, ijo)
+        # try:
+        #     title = title[len('Image Results for "'):]
+
+        # # <h1>Image Results for "C 10 Yellow And Egg-shape"</h1>
+        # h1r = r"Image Results for \"([\w\d]+?)\")    
         a = None
         mprint = None
         # with open('soup.html',"wt") as File:
