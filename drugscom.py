@@ -21,7 +21,7 @@ import json
 import html
 from string import punctuation
 from collections import deque
-from drugscom_package.config import chromedriver_path, max_output_drugs
+from config import chromedriver_path, max_output_drugs
 import traceback
         
 
@@ -226,8 +226,8 @@ class drugscom:
             'yellow': ['white']
         }
         self.shape_map = {
-            'oval': ['egg', 'elliptical / oval'],
-            'egg': ['oval',' elliptical / oval'],
+            'oval': ['egg-shape', 'egg', 'elliptical / oval'],
+            'egg': ['egg-shape','oval',' elliptical / oval'],
             'capsule': ['capsule-shape'],
             'square': ['four-sided', 'rectangle'],
             'rectangle': ['square', 'four-sided'],
@@ -379,38 +379,41 @@ class drugscom:
         # self.wait.until(EC.element_to_be_clickable(
         #     (By.XPATH, "//input[@type='submit']")))
         target_color_elem = color_elem.find_element(
-            By.XPATH, f"//option[@value={color_code}]")
-        print('target_color_elem found', target_color_elem)
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView();", target_color_elem)
-        # target_color_elem = color_elem.find_element(
-        #     By.XPATH, f"//option[@value={color_code}]")
-        print('target_color_elem after scroll\n', target_color_elem)
-        print('scroll complete')
-        self.driver.execute_script(
-            "arguments[0].click();", target_color_elem)
+            By.XPATH, f"option[@value={color_code}]")
+        print('target_color_elem found', target_color_elem.text)
+        # self.driver.execute_script(
+        #     "arguments[0].scrollIntoView();", target_color_elem)
+        # # target_color_elem = color_elem.find_element(
+        # #     By.XPATH, f"//option[@value={color_code}]")
+        # print('target_color_elem after scroll\n', target_color_elem)
+        # print('scroll complete')
+        # self.driver.execute_script(
+        #     "arguments[0].click();", target_color_elem)
+        target_color_elem.click()
         # time.sleep(2.5)
         print('color click complete')
 
     def select_shape(self, shape_code):
+#<select id="shape-select" name="shape" class="input-list">        
         shape_elem = self.driver.find_element(
             By.CSS_SELECTOR, "select[id='shape-select']")
-        print('shape_elem', shape_elem)
+        print('shape_elem', shape_elem.get_attribute("name")," | ", shape_elem.get_attribute("class"))
         shape = self.wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "select[id='shape-select']")))
         # time.sleep(1)
         shape.send_keys(Keys.RETURN)
         target_shape_elem = shape_elem.find_element(
-            By.XPATH, f"//option[@value={shape_code}]")
-        print('target_shape_elem found', target_shape_elem)
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView();", target_shape_elem)
+            By.XPATH, f"option[@value={shape_code}]")
+        print('target_shape_elem found', target_shape_elem.text)
+        # self.driver.execute_script(
+        #     "arguments[0].scrollIntoView();", target_shape_elem)
         # target_shape_elem = shape_elem.find_element(
         #     By.XPATH, f"//option[@value={shape_code}]")
         # print('target_shape_elem after scroll\n', target_shape_elem)
-        print('shape scroll complete')
-        self.driver.execute_script(
-            "arguments[0].click();", target_shape_elem)
+        # print('shape scroll complete')
+        # self.driver.execute_script(
+        #     "arguments[0].click();", target_shape_elem)
+        target_shape_elem.click()
         # time.sleep(2.5)
         print('shape click complete')
 
@@ -449,7 +452,7 @@ class drugscom:
         i = 0
         gds = []
         gds0 = []
-        print('starting get_data', pmprint, color_code, shape_code)
+        print('starting get_data', pmprint, color_code, target_color, shape_code, target_shape)
 
         #         self.driver.get(self.wurl)
         #         WebDriverWait(self.driver, 100).until(EC.title_contains(
@@ -522,12 +525,12 @@ class drugscom:
         #     , submit)
         for i in range(3):
             try:
-                print('waiting for clickable')
+                print('waiting for submit clickable')
                 elem = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit']")))
-                print("waiting for click")
+                print("waiting for submit click")
                 elem.click()
                 # elem.send_keys(Keys.RETURN)
-                print('click done')
+                print('submit click done')
                 break
             except:
                 time.sleep(1)            
@@ -542,9 +545,12 @@ class drugscom:
 
             # print('submit input not clickable')
         # self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Search Again')))
-        # print('Search Again clickable, driver.refresh')
+        # print('before submit driver.refresh')
         # self.driver.refresh()
-        # print('driver.refresh done', len(self.driver.page_source))
+        # # print('after submit driver.refresh done', len(self.driver.page_source))
+        # with open(f"{mprint}.html", "wt") as File:
+        #     File.write(self.driver.page_source)
+        # print(f"{mprint}.html written")
         time.sleep(1.5)
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         a = None
@@ -661,7 +667,7 @@ class drugscom:
             try:
                 if len(gds) > 0:
                     print('extending gds', len(gds))
-                    if len(gds) > max_output_drugs)
+                    if len(gds) > max_output_drugs:
                         gds = gds[0:max_output_drugs]
                     for gd in gds:
                         a = gd['a']
@@ -673,7 +679,7 @@ class drugscom:
                     self.results.extend(self.potential_matches)
                 elif len(gds0) > 0:
                     print('extending gds0', len(gds))
-                    if len(gds0) > max_output_drugs)
+                    if len(gds0) > max_output_drugs:
                         gds0 = gds0[0:max_output_drugs]                    
                     for gd in gds0:
                         a = gd['a']
