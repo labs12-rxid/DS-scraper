@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import WebDriverException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 from bs4 import BeautifulSoup
 import io
@@ -20,22 +21,20 @@ import json
 import html
 from string import punctuation
 from collections import deque
-from config import chromedriver_address
-import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from drugscom_package.config import chromedriver_path, max_output_drugs
+import traceback
+        
 
 debug = False
+max_output_drugs = int(max_output_drugs)
 
 
-chromedriver_path = chromedriver_address
-
+# headless = (os.getenv('headless') == 'False')
 headless = True
 print('headless', headless)
 
 print('chromedriver_path', chromedriver_path)
-
-
+print('max output drugs', max_output_drugs)
 
 
 class ititle_contains(object):
@@ -55,16 +54,21 @@ class drugscom:
     def __init__(self):
         self.debug = False
         self.first = True
-        self.nonmatch_unique_file = open('nonmatch_unique.txt', 'wt')
+        if debug:
+            self.nonmatch_unique_file = open('nonmatch_unique.txt', 'wt')
+        else:
+            self.nonmatch_unique_file = None
         self.wurl = 'https://www.drugs.com/pill_identification.html'
         self.base = "https://www.drugs.com"
+        # self.caps = DesiredCapabilities().CHROME
+        # self.caps["pageLoadStrategy"] = "normal"  
         self.chrome_options = webdriver.ChromeOptions()
         self.chrome_options.add_argument('--no-sandbox')
-        self.chrome_options.add_argument('--timeout:15000')
+        self.chrome_options.add_argument('--timeout:5000')
         if headless:
             self.chrome_options.add_argument('--headless')
         self.driver = webdriver.chrome.webdriver.WebDriver(
-            chromedriver_path, options=self.chrome_options)
+            chromedriver_path, options=self.chrome_options) #, desired_capabilities=self.caps)
         self.ddriver = webdriver.chrome.webdriver.WebDriver(
             chromedriver_path, options=self.chrome_options)
         self.wait = WebDriverWait(self.driver, 5)
@@ -74,6 +78,7 @@ class drugscom:
         self.potential_matches = []
         self.actions = ActionChains(self.driver)
         self.shape_codes = [
+            {"id": -1, "name": 'unspecified', 'code': -1},
             {"id": 0, "name": 'Round', 'code': 24},
             {"id": 1, "name": 'Capsule', 'code': 5},
             {"id": 2, "name": 'Oval', "code": 20},
@@ -246,7 +251,7 @@ class drugscom:
         color = color.lower()
         shape = shape.lower()
         #color_target: yellow  color: yellow shape_target: oval  shape: elliptical / oval
-        logger.info(f"color_target: {color_target}  color: {color} shape_target: {shape_target}  shape: {shape}")
+        print(f"color_target: {color_target}  color: {color} shape_target: {shape_target}  shape: {shape}")
         if color_target != color:
             Match = False
             if color_target in self.color_map:
@@ -256,6 +261,8 @@ class drugscom:
                         break
             if not Match:
                 return False
+        if shape_target == "unspecified":
+            return True
         if shape_target != shape:
             Match = False
             if shape_target in self.shape_map:
@@ -278,8 +285,8 @@ class drugscom:
         rv = 0
         m1l = m1.lower()
         m2l = m2.lower()
-        if m1l == m2l:
-            return True
+        if m1l == m2l: 
+            return True if mcs else 3
 
         print(f'mprint_is_equal |{m1}| |{m2}|')
 
@@ -288,12 +295,12 @@ class drugscom:
         m1l = ''.join(c for c in m1l if c not in punctuation)
         m2l = ''.join(c for c in m2l if c not in punctuation)
         if m1l == m2l:
-            return True
+            return True if mcs else 3
     #         print('no match yet', m1l, m2l)
 
                         
 
-        for i in range(3):
+        for i in range(3): # 0 no change, 1 dup first word, 2 dup entire imprint
             m1s = m1l.split()
             m2s = m2l.split()
             if i == 1:
@@ -303,7 +310,7 @@ class drugscom:
                 m2s.extend(m2s)  # dup MPRINTS on each side
                 print('extended m2s', m2s)
 
-            for j in range(2):
+            for j in range(2): # 0 no change,1 perpend'LOGO'
 
                 # print('m1s', m1s,'i',i,'j',j)
                 # print('m2s', m2s)
@@ -329,7 +336,7 @@ class drugscom:
                                 print('returning true for logo match')
                             return True
                         else:
-                            return 3 # potential match - nonmatching color/shap
+                            return 3 # potential match - nonmatching color/shape
                     peq = (m1ss.find(m2qs) >= 0) 
                     if peq and mcs:
                         # print(f'setting 4 for m1ss: |{m1ss}| m2qs: |{m2qs}|')
@@ -341,9 +348,26 @@ class drugscom:
         print('returning False from mprint_is_equal')
         return False
 
+    def select_50(self):
+        fifty_elem = self.driver.find_element(
+            By.CSS_SELECTOR, "select[name='maxrows']")
+        print('fifty_elem', fifty_elem)
+        fifty = self.wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "select[name='maxrows']")))
+        # time.sleep(1)
+        fifty.send_keys(Keys.RETURN)
+        # color.click()
+        print('fifty sent RETURN')
+        target_fifty_elem = fifty_elem.find_element(
+            By.XPATH, f"//option[@value=50]")
+        self.driver.execute_script(
+            "arguments[0].click();", target_fifty_elem)
+        # time.sleep(2.5)
+        print('50 click complete')        
+
     def select_color(self, color_code):
         color_elem = self.driver.find_element(
-            By.CSS_SELECTOR, "select[id='color-select']")
+             By.CSS_SELECTOR, "select[id='color-select']")
         print('color_elem', color_elem)
         color = self.wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "select[id='color-select']")))
@@ -423,6 +447,8 @@ class drugscom:
         shape_code = shape_row['code']
         self.potential_matches = []
         i = 0
+        gds = []
+        gds0 = []
         print('starting get_data', pmprint, color_code, shape_code)
 
         #         self.driver.get(self.wurl)
@@ -467,7 +493,9 @@ class drugscom:
         print('submit found')
 
         self.select_color(color_code)
-        self.select_shape(shape_code)
+        if shape_code >= 0:
+            self.select_shape(shape_code)
+
 
         # if the python way of clicking submit works use it, otherwise use the JavaScript way
         # try:
@@ -494,12 +522,17 @@ class drugscom:
         #     , submit)
         for i in range(3):
             try:
+                print('waiting for clickable')
                 elem = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit']")))
+                print("waiting for click")
                 elem.click()
+                # elem.send_keys(Keys.RETURN)
+                print('click done')
                 break
             except:
                 time.sleep(1)            
                 try:
+                    print('using javascript click')
                     self.driver.refresh()
                     self.driver.execute_script("arguments[0].click();", submit)
                     break
@@ -509,9 +542,9 @@ class drugscom:
 
             # print('submit input not clickable')
         # self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Search Again')))
-        print('Search Again clickable, driver.refresh')
-        self.driver.refresh()
-        print('driver.refresh done', len(self.driver.page_source))
+        # print('Search Again clickable, driver.refresh')
+        # self.driver.refresh()
+        # print('driver.refresh done', len(self.driver.page_source))
         time.sleep(1.5)
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         a = None
@@ -520,18 +553,27 @@ class drugscom:
         #     File.write(soup.prettify())
         # allimgs = soup.find_all(By.CSS_SELECTOR, 'img')
         # print('allimgs len', len(allimgs))
-        for pgno in range(1,6):
+        np = soup.find('a', {'aria-label': 'Next page'})
+        if np != None:
+            print('selecting 50')
+            self.select_50()
+            self.driver.refresh()
+        else:
+            print('single 10 page')
+        for pgno in range(1,2): # only doing max of 50 
             imgs = soup.findAll(
                 lambda tag: tag.name == "img" and
                 len(tag.attrs) >= 1 and
                 tag["src"][0:14] == '/images/pills/')
             print('len imgs', len(imgs), 'pgno', pgno)
+            mpr = 0
             for img in imgs:
                 #             s = img['src']
                 #                       print('s',s)
                 print('type!!', type(img.parent.parent))
                 a = img.parent.parent('span', text='Pill Imprint:')[
                                     0].next_sibling.next_sibling
+                print('a',a,'type(a)', type(a))                             
                 print('mprint', a.text, 'href', a.href, 'img', img)
                 color = img.parent.parent('span', text='Color:')[
                                         0].next_sibling.strip().lower()
@@ -548,48 +590,48 @@ class drugscom:
                 print('mpr', mpr)
                 if mpr == 1: # True, match made
                     break
-                if mpr > 0 and len(imgs) > 1:
-                    self.get_details(a, mpr, mprint, dmprint)
-                    a = None
-                    mprint = None
-                    continue
-                if mpr == 0 and len(imgs) > 1:
-                    a = None
-                    mprint = None
-                    continue
+                if mpr > 0:
+                    print('a',a,'type(a)', type(a))    
+                    gds.append({"a": a, "mpr": mpr, "mprint": mprint, "dmprint": dmprint})
+                    #self.get_details(a, mpr, mprint, dmprint)
+                if mpr == 0:
+                    gds0.append({"a": a, "mpr": mpr, "mprint": mprint, "dmprint": dmprint})
+
                     #                     print('not equal',mprint,pmprint)
-                if len(imgs) == 1:  # unique image result from drugs.com
-                    self.nonmatch_unique_file.write(
-                        f"mprint {mprint} pmprint {pmprint}")
-                    print('a is none',a == None)
-                    mpr = 1
-                    break
+                # if len(imgs) == 1:  # unique image result from drugs.com
+                #     if debug:
+                #         self.nonmatch_unique_file.write(
+                #             f"mprint {mprint} pmprint {pmprint}")
+                #     print('a is none only 1 image',a == None)
+                #     mpr = 4 if a == None else 1
+                #     break
 #                 print(f"nonmatch continue mprint {mprint} pmprint {pmprint}")
                 a = None
                 mprint = None
                 continue
     #             print('soup breaking out of imgs loop')
-            if a != None and mpr == 1:
+            if mpr == 1:
+                assert a != None, 'mpr 1 None a'
                 break # breaking out of pgno looop
-            np = soup.find('a', {'aria-label': 'Next page'})
-            print('np', np)
-            if np == None:
-                print('np == None')
-                break
-            # elem = self.wait.until(
-            #     EC.element_to_be_clickable((By.XPATH, "//a[@aria-label='Next Page']")))
-            elem = self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Next')))
-                               # By.XPATH, "//input[@type='submit']")
-            print('Next Page elem', elem)
-            elem.click()   
-            try: 
-                WebDriverWait(self.driver, 50).until(EC.title_contains(f"(Page {pgno + 1})"))        
-            except: 
-                print('bad title:', self.driver.title) 
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            # np = soup.find('a', {'aria-label': 'Next page'})
+            # print('np', np)
+            # if np == None:
+            #     print('np == None')
+            #     break
+            # # elem = self.wait.until(
+            # #     EC.element_to_be_clickable((By.XPATH, "//a[@aria-label='Next Page']")))
+            # elem = self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Next')))
+            #                    # By.XPATH, "//input[@type='submit']")
+            # print('Next Page elem', elem)
+            # elem.click()   
+            # try: 
+            #     WebDriverWait(self.driver, 50).until(EC.title_contains(f"(Page {pgno + 1})"))        
+            # except: 
+            #     print('bad title:', self.driver.title) 
+            # soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 
 
-        
+
         try:
             elem = self.wait.until(
                 EC.element_to_be_clickable((By.LINK_TEXT, 'Search Again')))
@@ -599,10 +641,11 @@ class drugscom:
                 self.select_shape(shape_code)  # for testing shape select
         except:
             pass
-        if a == None and len(self.potential_matches) == 0:
+        if a == None and len(gds) == 0 and len(gds0) == 0:
             print('null a')
             return json.dumps(self.results, indent=4)
-        if a != None:
+        if mpr == 1:
+            assert a != None, "None a for mpr == 1"
             self.get_details(a, mpr, mprint, dmprint)
             #             a = elem.parent.find_next('a')
             #             print(f"img: {a['href']} MPRINT: {a.text}")
@@ -614,14 +657,49 @@ class drugscom:
 #             if self.mprint_is_equal(mprint,pmprint) & appended: # works because drugs.com puts matching mprint first
 #                 break
 #             print( mprint.lower(), pmprint.lower())
-        i += i
-        if mpr != 1:
-            print('extending', len(self.potential_matches))
-            self.results.extend(self.potential_matches)
-        print('returning')
-        rv = json.dumps(self.results, indent=4)
-        self.reset()
-        return rv
+        else:
+            try:
+                if len(gds) > 0:
+                    print('extending gds', len(gds))
+                    if len(gds) > max_output_drugs)
+                        gds = gds[0:max_output_drugs]
+                    for gd in gds:
+                        a = gd['a']
+                        mpr = gd['mpr']
+                        mprint = gd['mprint']
+                        dmprint = gd['dmprint']
+                        print('a',a,'type(a)', type(a))
+                        self.get_details(a, mpr, mprint, dmprint)
+                    self.results.extend(self.potential_matches)
+                elif len(gds0) > 0:
+                    print('extending gds0', len(gds))
+                    if len(gds0) > max_output_drugs)
+                        gds0 = gds0[0:max_output_drugs]                    
+                    for gd in gds0:
+                        a = gd['a']
+                        mpr = gd['mpr']
+                        mprint = gd['mprint']
+                        dmprint = gd['dmprint']
+                        self.get_details(a, mpr, mprint, dmprint)
+                    self.results.extend(self.potential_matches) 
+            except Exception as e:   
+                print('error', repr(e))
+                print(f'__gd__ Error  {traceback.print_tb(sys.exc_info()[2])}')                
+
+        try:
+            print('returning')
+            if len(self.results) > max_output_drugs:
+                self.results = self.results[0:max_output_drugs]  
+            rv = json.dumps(self.results, indent=4)
+            self.reset()
+            return rv
+        except Exception as e:   
+            print('error', repr(e))
+            print(f'__results__ Error {traceback.print_tb(sys.exc_info()[2])}')               
+            return None    
+
+
+
 
     def get_details(self, a, mpr, mprint, dmprint):
         time.sleep(0.5)
@@ -722,7 +800,7 @@ class drugscom:
 
                 # #                       print('s',s)
                 #                     if s[0:14] == '/images/pills/':
-                #                          print('found img', s, ' mprint ', mprint)
+                #                          print('found img', s, ' mprint ', mprint)ls
                 #         
                 #                 self.img = base + s
                 ar = self.results if mpr == 1 else self.potential_matches
@@ -745,7 +823,8 @@ class drugscom:
     def close(self):
         self.driver.quit()
         self.ddriver.quit()
-        self.nonmatch_unique_file.close()
+        if self.nonmatch_unique_file != None:
+            self.nonmatch_unique_file.close()
         del self.results
 
 #            <option value="1">Blue</option>
