@@ -9,6 +9,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from bs4 import BeautifulSoup
 import io
 import pandas as pd
+import numpy as np
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import sys
@@ -22,6 +23,7 @@ import html
 from string import punctuation
 from collections import deque
 from config import chromedriver_path, max_output_drugs
+from color_shape import color_array, shape_array
 import traceback
         
 
@@ -77,6 +79,8 @@ class drugscom:
         self.results = []
         self.potential_matches = []
         self.actions = ActionChains(self.driver)
+
+
         self.shape_codes = [
             {"id": -1, "name": 'unspecified', 'code': -1},
             {"id": 0, "name": 'Round', 'code': 24},
@@ -96,9 +100,9 @@ class drugscom:
             {"id": 14, "name": 'Heart', "code": 16},
             {"id": 15, "name": 'Kidney', "code": 18},
             {"id": 16, "name": 'Gear', "code": 15},
-            {"id": 17, "name": 'Character', "code": 6},
-            {"id": 18, "name": 'Diamand', "code": 7},
-            {"id": 19, "name": 'Square', "code": 28},
+            {"id": 17, "name": 'Character', "code": 6}
+            # {"id": 18, "name": 'Diamand', "code": 7}, # these were removed by drugs.com
+            # {"id": 19, "name": 'Square', "code": 28},
         ]
         self.color_codes = [
             {'id': 0, 'name': 'Beige', 'code': 14},
@@ -230,8 +234,9 @@ class drugscom:
             'egg': ['egg-shape','oval',' elliptical / oval'],
             'capsule': ['capsule-shape'],
             'square': ['four-sided', 'rectangle'],
-            'rectangle': ['square', 'four-sided'],
-            'four-sided': ['rectangle']
+            'rectangle': ['four-sided'],
+            'four-sided': ['rectangle'],
+            'diamand': ['four-sided']
             }
     def get_color_code(self, id):
         for d in self.color_codes:
@@ -555,6 +560,45 @@ class drugscom:
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         title = soup.find('h1')
         print('title',title)
+        text = title.text
+        try:
+            f = text[0]
+            L = 0
+            h = None
+            if f == 'I':
+                h = 'Image Results for "'
+            elif f == 'R':
+                h = 'Results for "'
+            elif f == 'N':
+                h = 'No Results for "'
+            else:
+                print('test aborted, unknown text:', text)
+            if h != None:
+                L = len(h)
+            if L > 0 and text[0:L] == h:
+                print(text[L:L+len(mprint)],mprint) 
+                assert text[L:L+len(mprint)] == mprint, "h1 doesn't have mprint"
+                m = re.match(r"([\w-]+) And ([\w-]+)", text[L+len(mprint) + 1:] )
+                print(f're text|{text[L+len(mprint) +1:]}|')
+                print('m',m)
+                print('color groups(0)[0]|', m.groups(0)[0])
+                print('shape groups(0)[1]|', m.groups(0)[1])
+
+                print('mprint', mprint)
+                assert m.groups(0)[1] == shape_array[shape_code], 'correct shape not selected'
+                assert m.groups(0)[0] == color_array[color_code], 'correct color not selected'
+        except Exception as e:
+            print('target shape',shape_array[shape_code] )
+            print('target color',color_array[color_code] )
+            print('error', repr(e))
+            print(f'h1 verify Error {sys.exc_info()[-1].tb_lineno}') 
+            print('restarting')
+            return self.get_data(ijo)
+            # throw('h1 verify error')
+    
+
+
+
         # if title == None:
         #     return self.get_data(self, ijo)
         # try:
