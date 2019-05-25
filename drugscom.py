@@ -37,6 +37,7 @@ print('headless', headless)
 
 print('chromedriver_path', chromedriver_path)
 print('max output drugs', max_output_drugs)
+print('are changes getting through?')
 
 
 class ititle_contains(object):
@@ -54,6 +55,7 @@ class ititle_contains(object):
 
 class drugscom:
     def __init__(self):
+        print('drugscom __init__ start')
         self.debug = False
         self.first = True
         if debug:
@@ -64,6 +66,7 @@ class drugscom:
         self.base = "https://www.drugs.com"
         # self.caps = DesiredCapabilities().CHROME
         # self.caps["pageLoadStrategy"] = "normal"  
+        print('before chrome options')
         self.chrome_options = webdriver.ChromeOptions()
         self.chrome_options.add_argument('--no-sandbox')
         self.chrome_options.add_argument('--timeout:5000')
@@ -79,6 +82,7 @@ class drugscom:
         self.results = []
         self.potential_matches = []
         self.actions = ActionChains(self.driver)
+        print('after chrome options')
 
 
         self.shape_codes = [
@@ -445,10 +449,12 @@ class drugscom:
 
                  
     def get_data(self, ijo):
+        print('in get_data')
+        print('ijo',ijo)
         pmprint = ijo['imprint']
-
         color_row = self.get_color_code(ijo['color'])
         shape_row = self.get_shape_code(ijo['shape'])
+        print(f'color_row: {color_row}  shape_row: {shape_row} ijo: {ijo}')
         target_color = color_row['name'].lower()
         target_shape = shape_row['name'].lower()
         color_code = color_row['code']
