@@ -2,11 +2,11 @@ from flask import Flask, request, render_template, jsonify
 import atexit
 from drugscom import drugscom
 import json
+from config import chromedriver_path, max_output_drugs
 
 # print a nice greeting.
 def say_hello(username = "World"):
-    return '<p>Hello %s!</p>\n' % username
-
+    return '<p>Hello %s !</p>\n' % chromedriver_path
 # some bits of text for the page.
 header_text = '''
     <html>\n<head> <title>EB Flask Test</title> </head>\n<body>'''

@@ -5,4 +5,8 @@
 !.elasticbeanstalk/*.global.yml
 virt
 *.html
+*.old.*
+rekog.py
+*.new.*
+.vscode
 

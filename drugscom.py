@@ -23,7 +23,7 @@ import html
 from string import punctuation
 from collections import deque
 from config import chromedriver_path, max_output_drugs
-from color_shape import color_array, shape_array
+from color_shape import color_array, shape_array, shape_codes, color_codes, shape_map, color_map
 import traceback
         
 
@@ -56,201 +56,49 @@ class ititle_contains(object):
 class drugscom:
     def __init__(self):
         print('drugscom __init__ start')
-        self.debug = False
-        self.first = True
-        if debug:
-            self.nonmatch_unique_file = open('nonmatch_unique.txt', 'wt')
-        else:
-            self.nonmatch_unique_file = None
-        self.wurl = 'https://www.drugs.com/pill_identification.html'
-        self.base = "https://www.drugs.com"
-        # self.caps = DesiredCapabilities().CHROME
-        # self.caps["pageLoadStrategy"] = "normal"  
-        print('before chrome options')
-        self.chrome_options = webdriver.ChromeOptions()
-        self.chrome_options.add_argument('--no-sandbox')
-        self.chrome_options.add_argument('--timeout:5000')
-        if headless:
-            self.chrome_options.add_argument('--headless')
-        self.driver = webdriver.chrome.webdriver.WebDriver(
-            chromedriver_path, options=self.chrome_options) #, desired_capabilities=self.caps)
-        self.ddriver = webdriver.chrome.webdriver.WebDriver(
-            chromedriver_path, options=self.chrome_options)
-        self.wait = WebDriverWait(self.driver, 5)
-        self.dwait = WebDriverWait(self.ddriver, 5)
-        self.driver.set_window_size(850, 1600)
-        self.results = []
-        self.potential_matches = []
-        self.actions = ActionChains(self.driver)
-        print('after chrome options')
+        try:
+            self.debug = False
+            self.first = True
+            if debug:
+                self.nonmatch_unique_file = open('nonmatch_unique.txt', 'wt')
+            else:
+                self.nonmatch_unique_file = None
+            self.wurl = 'https://www.drugs.com/pill_identification.html'
+            self.base = "https://www.drugs.com"
+            # self.caps = DesiredCapabilities().CHROME
+            # self.caps["pageLoadStrategy"] = "normal"  
+            print('before chrome options')
+            self.chrome_options = webdriver.ChromeOptions()
+            self.chrome_options.add_argument('--no-sandbox')
+            self.chrome_options.add_argument('--timeout:5000')
+            if headless:
+                self.chrome_options.add_argument('--headless')
+            self.driver = webdriver.chrome.webdriver.WebDriver(
+                chromedriver_path, options=self.chrome_options) #, desired_capabilities=self.caps)
+            self.ddriver = webdriver.chrome.webdriver.WebDriver(
+                chromedriver_path, options=self.chrome_options)
+            self.wait = WebDriverWait(self.driver, 5)
+            self.dwait = WebDriverWait(self.ddriver, 5)
+            self.driver.set_window_size(850, 1600)
+            self.results = []
+            self.potential_matches = []
+            self.actions = ActionChains(self.driver)
+            print('after chrome options')
+        except Exception as e: 
+          print('error', repr(e))
+          print(f'Error on line {sys.exc_info()[-1].tb_lineno}')
+          raise e
 
 
-        self.shape_codes = [
-            {"id": -1, "name": 'unspecified', 'code': -1},
-            {"id": 0, "name": 'Round', 'code': 24},
-            {"id": 1, "name": 'Capsule', 'code': 5},
-            {"id": 2, "name": 'Oval', "code": 20},
-            {"id": 3, "name": 'Egg', "code":  9},
-            {"id": 4, "name": 'Barrel', "code": 1},
-            {"id": 5, "name": 'Rectangle', "code": 23},
-            {"id": 6, "name": '3 Sided', "code": 32},
-            {"id": 7, "name": '4 Sided', "code": 14},
-            {"id": 8, "name": '5 Sided', "code": 13},
-            {"id": 9, "name": '6 Sided', "code": 27},
-            {"id": 10, "name": '7 sided', "code": 25},
-            {"id": 11, "name": '8 sided', "code": 10},
-            {"id": 12, "name": 'U Shaped', "code": 33},
-            {"id": 13, "name": 'Figure 8', "code": 12},
-            {"id": 14, "name": 'Heart', "code": 16},
-            {"id": 15, "name": 'Kidney', "code": 18},
-            {"id": 16, "name": 'Gear', "code": 15},
-            {"id": 17, "name": 'Character', "code": 6}
-            # {"id": 18, "name": 'Diamand', "code": 7}, # these were removed by drugs.com
-            # {"id": 19, "name": 'Square', "code": 28},
-        ]
-        self.color_codes = [
-            {'id': 0, 'name': 'Beige', 'code': 14},
-            {'id': 1, 'name': 'Black', 'code': 73},
-            {'id': 2, 'name': 'Blue', 'code': 1},
-            {'id': 3, 'name': 'Brown', 'code': 2},
-            {'id': 4, 'name': 'Clear', 'code': 3},
-            {'id': 5, 'name': 'Gold', 'code': 4},
-            {'id': 6, 'name': 'Gray', 'code': 5},
-            {'id': 7, 'name': 'Green', 'code': 6},
-            {'id': 8, 'name': 'Maroon', 'code': 44},
-            {'id': 9, 'name': 'Orange', 'code': 7},
-            {'id': 10, 'name': 'Peach', 'code': 74},
-            {'id': 11, 'name': 'Pink', 'code': 8},
-            {'id': 12, 'name': 'Purple', 'code': 9},
-            {'id': 13, 'name': 'Red', 'code': 10},
-            {'id': 14, 'name': 'Tan', 'code': 11},
-            {'id': 15, 'name': 'White', 'code': 12},
-            {'id': 16, 'name': 'Yellow', 'code': 13},            
-            {'id': 0, 'name': 'Beige & Beige', 'code': 14},
-            {'id': 1, 'name': 'Black & Black', 'code': 73},
-            {'id': 2, 'name': 'Blue & Blue', 'code': 1},
-            {'id': 3, 'name': 'Brown & Brown', 'code': 2},
-            {'id': 4, 'name': 'Clear & Clear', 'code': 3},
-            {'id': 5, 'name': 'Gold & Gold', 'code': 4},
-            {'id': 6, 'name': 'Gray & Gray', 'code': 5},
-            {'id': 7, 'name': 'Green & Green', 'code': 6},
-            {'id': 8, 'name': 'Maroon & Maroon', 'code': 44},
-            {'id': 9, 'name': 'Orange & Orange', 'code': 7},
-            {'id': 10, 'name': 'Peach & Peach', 'code': 74},
-            {'id': 11, 'name': 'Pink & Pink', 'code': 8},
-            {'id': 12, 'name': 'Purple & Purple', 'code': 9},
-            {'id': 13, 'name': 'Red & Red', 'code': 10},
-            {'id': 14, 'name': 'Tan & Tan', 'code': 11},
-            {'id': 15, 'name': 'White & White', 'code': 12},
-            {'id': 16, 'name': 'Yellow & Yellow', 'code': 13},
-            {'id': 17, 'name': 'Beige & Red', 'code': 69},
-            {'id': 18, 'name': 'Black & Green', 'code': 55},
-            {'id': 19, 'name': 'Black & Teal', 'code': 70},
-            {'id': 20, 'name': 'Black & Yellow', 'code': 48},
-            {'id': 21, 'name': 'Blue & Brown', 'code': 52},
-            {'id': 22, 'name': 'Blue & Grey', 'code': 45},
-            {'id': 23, 'name': 'Blue & Orange', 'code': 71},
-            {'id': 24, 'name': 'Blue & Peach', 'code': 53},
-            {'id': 25, 'name': 'Blue & Pink', 'code': 34},
-            {'id': 26, 'name': 'Blue & White', 'code': 19},
-            {'id': 27, 'name': 'Blue & White Specks', 'code': 26},
-            {'id': 28, 'name': 'Blue & Yellow', 'code': 21},
-            {'id': 29, 'name': 'Brown & Clear', 'code': 47},
-            {'id': 30, 'name': 'Brown & Orange', 'code': 54},
-            {'id': 31, 'name': 'Brown & Peach', 'code': 28},
-            {'id': 32, 'name': 'Brown & Red', 'code': 16},
-            {'id': 33, 'name': 'Brown & White', 'code': 57},
-            {'id': 34, 'name': 'Brown & Yellow', 'code': 27}, 
-            {'id': 35, 'name': 'Clear & Green', 'code': 49},
-            {'id': 36, 'name': 'Dark & Light Green', 'code': 46},
-            {'id': 37, 'name': 'Gold & White', 'code': 51},
-            {'id': 38, 'name': 'Grey & Peach', 'code': 63},
-            {'id': 39, 'name': 'Grey & Pink', 'code': 39},
-            {'id': 40, 'name': 'Grey & Red', 'code':58},
-            {'id': 41, 'name': 'Grey & White', 'code': 51},
-            {'id': 42, 'name': 'Grey & Yellow', 'code': 68},
-            {'id': 43, 'name': 'Green & Orange', 'code': 65},
-            {'id': 44, 'name': 'Green & Peach', 'code': 63},
-            {'id': 45, 'name': 'Green & Pink', 'code': 56},
-            {'id': 46, 'name': 'Green & Purple', 'code': 43},
-            {'id': 47, 'name': 'Green & Turquoise', 'code': 62},
-            {'id': 48, 'name': 'Green & White', 'code': 30},
-            {'id': 49, 'name': 'Green & Yellow', 'code': 22},
-            {'id': 50, 'name': 'Lavender & White', 'code': 42},
-            {'id': 51, 'name': 'Maroon & Pink', 'code': 40},
-            {'id': 52, 'name': 'Orange & Turquoise', 'code': 50},
-            {'id': 53, 'name': 'Orange & White', 'code': 64},
-            {'id': 54, 'name': 'Orange & Yellow', 'code': 23},
-            {'id': 55, 'name': 'Peach & Purple', 'code': 60},
-            {'id': 56, 'name': 'Peach & Red', 'code': 66},
-            {'id': 57, 'name': 'Peach & White', 'code': 18},
-            {'id': 58, 'name': 'Pink & Purple', 'code': 15},
-            {'id': 59, 'name': 'Pink & Red Specks', 'code': 37},
-            {'id': 60, 'name': 'Pink & Turquoise', 'code': 29},
-            {'id': 61, 'name': 'Pink & White', 'code': 25},
-            {'id': 62, 'name': 'Pink & Yellow', 'code': 72},
-            {'id': 63, 'name': 'Red & Turquoise', 'code': 17},
-            {'id': 64, 'name': 'Red & White', 'code': 35},
-            {'id': 65, 'name': 'Red & Yellow', 'code': 20},
-            {'id': 66, 'name': 'Tan & White', 'code': 33},
-            {'id': 67, 'name': 'Turquoise & White', 'code': 59},
-            {'id': 68, 'name': 'Turquuise & Yellow', 'code': 24},
-            {'id': 69, 'name': 'White & Blue Specks', 'code': 32},
-            {'id': 70, 'name': 'White & Red Specks', 'code': 41},
-            {'id': 71, 'name': 'White & Yellow', 'code': 38},
-            {'id': 72, 'name': 'Yellow & Grey', 'code': 31},
-            {'id': 73, 'name': 'Yellow & White', 'code': 36}]
-
-        self.color_table = \
-            """
-                Beige	#F5F5DC	(245,245,220)
-                Black	#000000	(0,0,0)
-                Blue	#0000FF	(0,0,255)
-                Brown	#A52A2A	(165,42,42)
-                Gold	#FFD700	(255,215,0)
-                Gray 	#808080	(128,128,128)
-                Green	#008000	(0,128,0)
-                Maroon	#800000	(128,0,0)
-                Orange	#FFA500	(255,165,0)
-                Peach	#FFDAB9	(255,218,185)
-                Pink	#FFC0CB	(255,192,203)
-                Purple	#800080	(12,0,128)
-                Red     #FF0000	(255,0,0)
-                Tan     #D2B48C	(210,180,140)
-                White	#FFFFFF	(255,255,255)
-                Yellow	#FFFF00	(255,255,0)
-                """
-        self.color_map = {
-            'beige': ['white', 'brown', 'gray', 'tan'],
-            'brown': ['beige'],
-            'gray': ['beige', 'white'],
-            'maroon': ['red', 'purple'],
-            'peach': ['pink'],
-            'pink': ['peach'],
-            'purple': ['maroon'],
-            'red': ['maroon'],
-            'tan': ['beige'],
-            'white': ['beige', 'tan', 'yellow', 'gray'],
-            'yellow': ['white']
-        }
-        self.shape_map = {
-            'oval': ['egg-shape', 'egg', 'elliptical / oval'],
-            'egg': ['egg-shape','oval',' elliptical / oval'],
-            'capsule': ['capsule-shape'],
-            'square': ['four-sided', 'rectangle'],
-            'rectangle': ['four-sided'],
-            'four-sided': ['rectangle'],
-            'diamand': ['four-sided']
-            }
     def get_color_code(self, id):
-        for d in self.color_codes:
+        for d in color_codes:
             if d['id'] == id:
                 return d
         print(f'unknown color id {id} ')
         return 12  # white
 
     def get_shape_code(self, id):
-        for d in self.shape_codes:
+        for d in shape_codes:
             if d['id'] == id:
                 return d
         print(f'unknown shape id {id} ')
@@ -263,8 +111,8 @@ class drugscom:
         print(f"color_target: {color_target}  color: {color} shape_target: {shape_target}  shape: {shape}")
         if color_target != color:
             Match = False
-            if color_target in self.color_map:
-                for color_ in self.color_map[color_target]:
+            if color_target in color_map:
+                for color_ in color_map[color_target]:
                     if color == color_:
                         Match = True
                         break
@@ -274,8 +122,8 @@ class drugscom:
             return True
         if shape_target != shape:
             Match = False
-            if shape_target in self.shape_map:
-                for shape_ in self.shape_map[shape_target]:
+            if shape_target in shape_map:
+                for shape_ in shape_map[shape_target]:
                     # print(f'|{shape_}|  |{shape}|')
                     if shape == shape_:
                         Match = True
@@ -559,11 +407,12 @@ class drugscom:
         # print('before submit driver.refresh')
         # self.driver.refresh()
         # # print('after submit driver.refresh done', len(self.driver.page_source))
-        # with open(f"{mprint}.html", "wt") as File:
-        #     File.write(self.driver.page_source)
-        # print(f"{mprint}.html written")
+
         time.sleep(1.5)
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        # with open(f"{mprint}.html", "wt") as File:
+        #     File.write(soup.prettify())
+        # print(f"{mprint}.html written")        
         title = soup.find('h1')
         print('title',title)
         text = title.text
@@ -588,7 +437,9 @@ class drugscom:
                 print(f're text|{text[L+len(mprint) +1:]}|')
                 print('m',m)
                 print('color groups(0)[0]|', m.groups(0)[0])
+                print('target color',  color_array[color_code], 'color_code', color_code)
                 print('shape groups(0)[1]|', m.groups(0)[1])
+                print ('target shape', shape_array[shape_code])
 
                 print('mprint', mprint)
                 assert m.groups(0)[1] == shape_array[shape_code], 'correct shape not selected'
@@ -630,8 +481,20 @@ class drugscom:
                 lambda tag: tag.name == "img" and
                 len(tag.attrs) >= 1 and
                 tag["src"][0:14] == '/images/pills/')
-            print('len imgs', len(imgs), 'pgno', pgno)
+            print('len imgs', len(imgs))
+
+            keep = []
+            for img in list(imgs):
+                if img.scr not in keep:
+                    keep.append(img.src)
+                else:
+                    imgs.remove(img)   # remove dup img
+
+            print('len nondup imgs', len(imgs))
+
             mpr = 0
+            print('imgs',type(imgs), ' length: ', len(imgs), '___________________', imgs, '___________________')
+            
             for img in imgs:
                 #             s = img['src']
                 #                       print('s',s)
@@ -878,7 +741,7 @@ class drugscom:
                 break
             except Exception as e:
                 print('error appending', repr(e))
-                print(f'get_details error {sys.exc_info()[-2]}')
+                print(f'get_details error {sys.exc_info()[-1].tb_lineno}')
                 break
 
     def reset(self):
