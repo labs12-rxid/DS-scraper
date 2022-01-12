@@ -29,7 +29,7 @@ opencv-python==4.1.0.25
 pandas==0.24.2
 pathspec==0.5.9
 Pillow==4.3.0
-pipenv==2018.11.26
+pipenv==2022.1.8
 psycopg2-binary==2.8.2
 python-dateutil==2.8.0
 pytz==2019.1
